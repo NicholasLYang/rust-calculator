@@ -14,27 +14,30 @@ pub enum Expr {
 
 type Value = i64;
 
-fn eval(expr: Expr) -> Option<Value> {
+fn eval(expr: &Expr) -> Option<Value> {
     match expr {
-        Expr::BinOp(op, lhs, rhs) => bind_op(eval(*lhs), eval(*rhs), op),
-        Expr::Value(val) => Some(val),
+        Expr::BinOp(op, lhs, rhs) => bind_op(eval(lhs), eval(rhs), op),
+        Expr::Value(val) => Some(*val),
     }
 }
 
 fn optimize(expr: Expr) -> Expr {
     if let Expr::BinOp(op, lhs, rhs) = expr {
-        match (op, *lhs, rhs) {
-            (Op::Plus, Expr::Value(0), rhs) => *rhs,
-            (op, lhs, rhs) => Expr::BinOp(op, Box::new(lhs), rhs),
+        match (op, *lhs, *rhs) {
+            (Op::Plus, Expr::Value(0), rhs) => rhs,
+            (Op::Plus, lhs, Expr::Value(0)) => lhs,
+            (Op::Times, _, Expr::Value(0)) => Expr::Value(0),
+            (Op::Times, Expr::Value(0), _) => Expr::Value(0),
+            (op, lhs, rhs) => Expr::BinOp(op, Box::new(lhs), Box::new(rhs)),
         }
     } else {
         expr
     }
 }
 
-fn bind_op(lhs: Option<Value>, rhs: Option<Value>, op: Op) -> Option<Value> {
+fn bind_op(lhs: Option<Value>, rhs: Option<Value>, op: &Op) -> Option<Value> {
     match (lhs, rhs) {
-        (Some(lval), Some(rval)) => match op {
+        (Some(lval), Some(rval)) => match *op {
             Op::Plus => Some(lval + rval),
             Op::Minus => Some(lval - rval),
             Op::Times => Some(lval * rval),
@@ -69,15 +72,17 @@ fn test_optimize() {
     ];
     for expr in exprs {
         let optimized_expr = optimize(expr.clone());
-        assert_eq!(eval(optimized_expr), eval(expr));
+        assert_eq!(eval(&optimized_expr), eval(&expr));
     }
 }
 
 fn main() {
-    let mut expr = Expr::BinOp(
+    let expr = Expr::BinOp(
         Op::Plus,
         Box::new(Expr::Value(0)),
         Box::new(Expr::Value(20)),
     );
-    println!("{:?}", optimize(expr));
+    let optimized_expr = optimize(expr);
+    println!("{:?}", &optimized_expr);
+    println!("{:?}", eval(&optimized_expr));
 }
