@@ -1,18 +1,11 @@
-#[derive(Clone, Debug, PartialEq)]
-pub enum Op {
-    Plus,
-    Minus,
-    Times,
-    Div,
-}
+#[macro_use] extern crate lalrpop_util;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expr {
-    BinOp(Op, Box<Expr>, Box<Expr>),
-    Value(Value),
-}
+lalrpop_mod!(pub parser);
 
-type Value = i64;
+mod lexer;
+mod ast;
+
+use ast::{Expr, Value, Op};
 
 fn eval(expr: &Expr) -> Option<Value> {
     match expr {
@@ -24,11 +17,12 @@ fn eval(expr: &Expr) -> Option<Value> {
 fn optimize(expr: Expr) -> Expr {
     if let Expr::BinOp(op, lhs, rhs) = expr {
         match (op, *lhs, *rhs) {
-            (Op::Plus, Expr::Value(0), rhs) => rhs,
-            (Op::Plus, lhs, Expr::Value(0)) => lhs,
+            (Op::Plus, Expr::Value(0), rhs) => optimize(rhs),
+            (Op::Plus, lhs, Expr::Value(0)) => optimize(lhs),
             (Op::Times, _, Expr::Value(0)) => Expr::Value(0),
             (Op::Times, Expr::Value(0), _) => Expr::Value(0),
-            (op, lhs, rhs) => Expr::BinOp(op, Box::new(lhs), Box::new(rhs)),
+            (Op::Minus, lhs, Expr::Value(0)) => optimize(lhs),
+            (op, lhs, rhs) => Expr::BinOp(op, Box::new(optimize(lhs)), Box::new(optimize(rhs))),
         }
     } else {
         expr
@@ -77,6 +71,8 @@ fn test_optimize() {
 }
 
 fn main() {
+    let lexer = lexer::Lexer::new("10 + 11");
+    println!("{:?}", parser::ExprParser::new().parse(lexer));
     let expr = Expr::BinOp(
         Op::Plus,
         Box::new(Expr::Value(0)),
