@@ -5,17 +5,20 @@ use Expr;
 grammar;
 
 pub Expr: Expr = {
-
+    <l:Expr> "+" <r:Factor> => Expr::BinOp(Op::Plus, Box::new(l), Box::new(r)),
     <l:Expr> "-" <r:Factor> => Expr::BinOp(Op::Minus, Box::new(l), Box::new(r)),
+    Factor,
 }
 
 pub Factor: Expr = {
     <l:Factor> "*" <r:Term> => Expr::BinOp(Op::Times, Box::new(l), Box::new(r)),
     <l:Factor> "/" <r:Term> => Expr::BinOp(Op::Times, Box::new(l), Box::new(r)),
+    Term,
 }
 
 pub Term: Expr = {
-    <n: Num> => Expr::Value(n)
+    <n: Num> => Expr::Value(n),
+    "(" <Expr> ")"
 };
 
 extern {
@@ -27,6 +30,8 @@ extern {
         "-" => Token::Op(Op::Minus),
         "*" => Token::Op(Op::Times),
         "/" => Token::Op(Op::Div),
+        "(" => Token::LParen,
+        ")" => Token::RParen,
         Num => Token::Num(<i64>)
     }
 }

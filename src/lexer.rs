@@ -6,7 +6,9 @@ pub type Spanned<Token, Loc, Error> = Result<(Loc, Token, Loc), Error>;
 #[derive(PartialEq, Debug)]
 pub enum Token {
     Num(i64),
-    Op(Op)    
+    Op(Op),
+    LParen,
+    RParen
 }
 #[derive(Debug)]
 pub enum LexicalError {
@@ -70,6 +72,8 @@ impl<'input> Iterator for Lexer<'input> {
                 '-' => Some(Ok((i, Token::Op(Op::Minus), i + 1))),
                 '*' => Some(Ok((i, Token::Op(Op::Times), i + 1))),
                 '/' => Some(Ok((i, Token::Op(Op::Div), i + 1))),
+                '(' => Some(Ok((i, Token::LParen, i + 1 ))),
+                ')' => Some(Ok((i, Token::RParen, i + 1 ))),
                 c => Some(Err(LexicalError::UnknownChar((i, c))))
             }
         } else {

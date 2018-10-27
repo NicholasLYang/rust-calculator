@@ -1,3 +1,5 @@
+use std::io;
+use std::io::Write;
 #[macro_use] extern crate lalrpop_util;
 
 lalrpop_mod!(pub parser);
@@ -16,13 +18,15 @@ fn eval(expr: &Expr) -> Option<Value> {
 
 fn optimize(expr: Expr) -> Expr {
     if let Expr::BinOp(op, lhs, rhs) = expr {
-        match (op, *lhs, *rhs) {
-            (Op::Plus, Expr::Value(0), rhs) => optimize(rhs),
-            (Op::Plus, lhs, Expr::Value(0)) => optimize(lhs),
+        let optimized_lhs = optimize(*lhs);
+        let optimized_rhs = optimize(*rhs);
+        match (op, optimized_lhs, optimized_rhs) {
+            (Op::Plus, Expr::Value(0), rhs) => rhs,
+            (Op::Plus, lhs, Expr::Value(0)) => lhs,
             (Op::Times, _, Expr::Value(0)) => Expr::Value(0),
             (Op::Times, Expr::Value(0), _) => Expr::Value(0),
-            (Op::Minus, lhs, Expr::Value(0)) => optimize(lhs),
-            (op, lhs, rhs) => Expr::BinOp(op, Box::new(optimize(lhs)), Box::new(optimize(rhs))),
+            (Op::Minus, lhs, Expr::Value(0)) => lhs,
+            (op, lhs, rhs) => Expr::BinOp(op, Box::new(lhs), Box::new(rhs)),
         }
     } else {
         expr
@@ -70,15 +74,33 @@ fn test_optimize() {
     }
 }
 
+fn run_calculator() {
+    print!("> ");
+    io::stdout().flush().unwrap();
+    let mut input = String::new();
+
+    io::stdin().read_line(&mut input)
+        .ok()
+        .expect("Couldn't read line");
+
+    let lexer = lexer::Lexer::new(&input);
+
+    let parser_out = parser::ExprParser::new().parse(lexer);
+    if let Ok(expr) = parser_out {
+        println!("Parsed into: {:?}", expr);
+        let optimized_expr = optimize(expr);
+        println!("Optimized: {:?}", optimized_expr);
+        match eval(&optimized_expr) {
+            Some(val) => println!("{}", val),
+            None => println!("Could not evaluate")
+        }
+    } else {
+        println!("Could not parse input: {:?}", parser_out);
+    }
+}
+
 fn main() {
-    let lexer = lexer::Lexer::new("10 + 11");
-    println!("{:?}", parser::ExprParser::new().parse(lexer));
-    let expr = Expr::BinOp(
-        Op::Plus,
-        Box::new(Expr::Value(0)),
-        Box::new(Expr::Value(20)),
-    );
-    let optimized_expr = optimize(expr);
-    println!("{:?}", &optimized_expr);
-    println!("{:?}", eval(&optimized_expr));
+    loop {
+        run_calculator();
+    }
 }
